@@ -1,8 +1,9 @@
 stages:
  - lint
  - build
+ - release
 
-.build_job_configuration: &build_job_configuration
+.restricted_job_configuration: &restricted_job_configuration
   rules:
     - if: '$START == "true"'
       when: always
@@ -26,18 +27,21 @@ code-style-check:
     - master
     - merge_requests
 
-build:functions:
-  before_script:
-    - npm i -g zcatalyst-cli
+catalyst-deploy:
   stage: build
+   before_script:
+    - npm i -g zcatalyst-cli
   script:
     - echo "Deploying to catalyst..."
     - catalyst deploy --project $CATALYST_PROJECT_NAME --org $CATALYST_ORG --token $CATALYST_TOKEN
-  <<: *build_job_configuration
+  <<: *restricted_job_configuration
+  artifacts:
+    expire_in: 30 mins
+    paths:
+      - functions
 
-build:release:
-  stage: build
-  needs: ["build:functions"]
+build-release:
+  stage: release
   script:
     - echo "Generating release zip.."
     - zip -r release.zip .
@@ -45,4 +49,4 @@ build:release:
     expire_in: 30 mins
     paths:
       - ./release.zip
-  <<: *build_job_configuration
+  <<: *restricted_job_configuration
