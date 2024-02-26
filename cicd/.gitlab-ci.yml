@@ -1,5 +1,6 @@
 stages:
  - lint
+ - build
 
 # common for all jobs in all stages
 .stage-default: &stage-default
@@ -21,3 +22,23 @@ code-style-check:
     # Run eslint
     - node_modules/eslint/bin/eslint.js -c ./cicd/.eslintrc.js 'functions/**/*.js'
  <<: *stage-default
+
+build:functions:
+  before_script:
+    - npm i -g zcatalyst-cli
+  stage: build
+  script:
+    - echo "Deploying to catalyst..."
+    - catalyst deploy --project $CATALYST_PROJECT_NAME --org $CATALYST_ORG --token $CATALYST_TOKEN
+  when: manual
+
+build:release:
+  stage: build
+  needs: ["build:functions"]
+  script:
+    - echo "Generating release zip.."
+    - zip -r release.zip .
+  artifacts:
+    expire_in: 30 mins
+    paths:
+      - ./release.zip
