@@ -2,11 +2,12 @@ stages:
  - lint
  - build
 
-# common for all jobs in all stages
-.stage-default: &stage-default
-  only:
-    - master
-    - merge_requests
+.build_job_configuration: &build_job_configuration
+  rules:
+    - if: '$START == "true"'
+      when: always
+    - when: never
+
 
 code-style-check:
  stage: lint
@@ -21,7 +22,9 @@ code-style-check:
 
     # Run eslint
     - node_modules/eslint/bin/eslint.js -c ./cicd/.eslintrc.js 'functions/**/*.js'
- <<: *stage-default
+ only:
+    - master
+    - merge_requests
 
 build:functions:
   before_script:
@@ -30,7 +33,7 @@ build:functions:
   script:
     - echo "Deploying to catalyst..."
     - catalyst deploy --project $CATALYST_PROJECT_NAME --org $CATALYST_ORG --token $CATALYST_TOKEN
-  when: manual
+  <<: *build_job_configuration
 
 build:release:
   stage: build
@@ -42,3 +45,4 @@ build:release:
     expire_in: 30 mins
     paths:
       - ./release.zip
+  <<: *build_job_configuration
