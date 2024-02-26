@@ -1,0 +1,52 @@
+stages:
+ - lint
+ - build
+ - release
+
+.restricted_job_configuration: &restricted_job_configuration
+  rules:
+    - if: '$START == "true"'
+      when: always
+    - when: never
+
+
+code-style-check:
+ stage: lint
+ script:
+    # Install eslint
+    - |
+      npm i eslint@^8.0.1 \
+      eslint-config-standard@latest \
+      eslint-plugin-import@^2.25.2 \
+      eslint-plugin-n@^15.0.0 || ^16.0.0  \
+      eslint-plugin-promise@^6.0.0
+
+    # Run eslint
+    - node_modules/eslint/bin/eslint.js -c ./cicd/.eslintrc.js 'functions/**/*.js'
+ only:
+    - master
+    - merge_requests
+
+catalyst-deploy:
+  stage: build
+   before_script:
+    - npm i -g zcatalyst-cli
+  script:
+    - echo "Deploying to catalyst..."
+    - catalyst deploy --project $CATALYST_PROJECT_NAME --org $CATALYST_ORG --token $CATALYST_TOKEN
+  <<: *restricted_job_configuration
+  artifacts:
+    expire_in: 30 mins
+    paths:
+      - functions
+
+build-release:
+  stage: release
+  script:
+    - echo "Generating release zip.."
+    - zip -r release.zip .
+  artifacts:
+    expire_in: 30 mins
+    paths:
+      - ./release.zip
+  <<: *restricted_job_configuration
